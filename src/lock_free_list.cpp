@@ -5,10 +5,12 @@
 
 #include "marked_pointer.h"
 
+using namespace std;
+
 template <class T>
 struct Node {
     T item;
-    Node* next;
+    atomic<Node*> next;
     Node(T val): item(val), next(nullptr){}
 };
 
@@ -18,19 +20,22 @@ struct Window {
     Node<T>* curr;
 };
 
+
+
 template <class T>
 class LockFreeList {
     private:
     T first_sentinel_value;
     T last_sentinel_value;
     public:
-    Node<T>* head;
+    atomic<Node<T>*> head;
 
     LockFreeList(T first_sentinel_value, T last_sentinel_value) {
         this->first_sentinel_value = first_sentinel_value;
         this->last_sentinel_value = last_sentinel_value;
         head = new Node<T>(first_sentinel_value);
-        head->next = new Node<T>(last_sentinel_value);
+        Node<T>* tmp = head;
+        tmp->next = new Node<T>(last_sentinel_value);
     }
 
     bool contains(T item) {
@@ -43,7 +48,6 @@ class LockFreeList {
         }
         return n->item == item && !(getFlag(n->next));
     }
-
 
     Window<T> find (T item) {
         retry: while(true) {
@@ -59,17 +63,12 @@ class LockFreeList {
                 while(getFlag(curr->next)) {
                     //printf("next element\n");
                     resetFlag((void**)&curr);
-                    resetFlag((void**)&succ);
-
-                    std::atomic<Node<T>*> aptr;
-                    aptr.store(pred->next);
+                    resetFlag((void**)&succ);;
                     
-                    if(!aptr.compare_exchange_strong(curr, succ)) {
-                        pred->next = aptr.load();
-                        //printf("find CAS success\n");
+                    if(!pred->next.compare_exchange_weak(curr, succ)) {
+                        printf("find CAS failed\n");
                         goto retry;
                     }
-                    //printf("find CAS failed\n");
                     curr = succ;
                     succ = (Node<T>*)getPointer(succ->next);
                 }
@@ -107,14 +106,10 @@ class LockFreeList {
             resetFlag((void **) &n->next);
             resetFlag((void **) &curr);
 
-            std::atomic<Node<T>*> aptr;
-            aptr.store(pred->next);
-            if(aptr.compare_exchange_weak(curr, n)) {
-                pred->next = aptr.load();
-                //printf("add CAS success\n");
+            if(pred->next.compare_exchange_weak(curr, n)) {
                 return true;
             }
-            //printf("add CAS failed\n");
+            printf("add CAS failed\n");
         }
     }
 
@@ -133,19 +128,14 @@ class LockFreeList {
             Node<T>* marked_succ = succ;
             setFlag((void **)&marked_succ);
             resetFlag((void **)&succ);
-
-            std::atomic<Node<T>*> aptr;
-            aptr.store(w.curr->next);
-            if(!aptr.compare_exchange_weak(succ, marked_succ)) {
-                w.curr->next = aptr.load();
-                //printf("del CAS1 failed\n");
+            
+            if(!w.curr->next.compare_exchange_weak(succ, marked_succ)) {
+                printf("del CAS1 failed\n");
                 continue;
             }
             //printf("del CAS1 success\n");
 
-            aptr.store(w.pred->next);
-            aptr.compare_exchange_weak(w.curr, succ);
-            w.pred->next = aptr.load();
+            w.pred->next.compare_exchange_weak(w.curr, succ);
             return true;
         }
     }

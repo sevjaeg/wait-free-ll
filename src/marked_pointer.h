@@ -1,5 +1,4 @@
-
-void *getPointer(void *);
-bool getFlag(void *);
-void setFlag(void **);
-void resetFlag(void **);
+void * getPointer(void *p);
+bool getFlag(void *p);
+void setFlag(void ** p);
+void resetFlag(void ** p);

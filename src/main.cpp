@@ -10,15 +10,17 @@ int main(int argc, char *argv[]) {
     int nthreads, tid;
 
     LockFreeList<int>* list = new LockFreeList<int>(INT32_MIN, INT32_MAX);
-    
     list->add(4);
     list->add(4000);
     list->remove(6);
     list->print();
     list->add(-4);
+    list->add(-40);
     list->add(4000);
     list->remove(4);
     list->print();
+    list->contains(4);
+    list->contains(5);
 
     /*
     Node<int> n;
@@ -40,15 +42,22 @@ int main(int argc, char *argv[]) {
     std::cout << getFlag(nptr)<<"\n";
     */
 
+    const int items = 1000;
+
+    omp_set_num_threads(8);
+
     #pragma omp parallel private(tid)
     {
         tid = omp_get_thread_num();
+        printf("thread %d\n", tid);
+
         nthreads = omp_get_num_threads();
+        for(int i = (items*tid)/nthreads; i<(items*(tid+1))/nthreads; i++){
+            list->add(i);
+        }
         
-        printf("Hello World from thread = %d\n", tid);
     }
-
-
+    list->print();
 
     return 0;
 }
