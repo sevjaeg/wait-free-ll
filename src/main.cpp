@@ -3,15 +3,42 @@
 #include <iostream>
 
 #include "lock_free_list.cpp"
-#include "markable_reference.cpp"
+#include "marked_pointer.h"
 
- int main(int argc, char *argv[]) {
+int main(int argc, char *argv[]) {
 
     int nthreads, tid;
 
-    LockFreeList<int>* list = new LockFreeList<int>();
-    std::cout << list->contains(4) << "\n";
-    list->find(4);
+    LockFreeList<int>* list = new LockFreeList<int>(INT32_MIN, INT32_MAX);
+    
+    list->add(4);
+    list->add(4000);
+    list->remove(6);
+    list->print();
+    list->add(-4);
+    list->add(4000);
+    list->remove(4);
+    list->print();
+
+    /*
+    Node<int> n;
+    n.item = 4;
+    n.next = nullptr;
+
+    Node<int> * nptr;
+    nptr = & n;
+
+    std::cout << getPointer(nptr) <<"\n";
+    std::cout << getFlag(nptr)<<"\n";
+
+    setFlag((void**)&nptr);
+
+    std::cout << getPointer(nptr)<<"\n";
+    std::cout << getFlag(nptr)<<"\n";
+
+    resetFlag((void**)&nptr);
+    std::cout << getFlag(nptr)<<"\n";
+    */
 
     #pragma omp parallel private(tid)
     {
@@ -24,4 +51,4 @@
 
 
     return 0;
- }
+}

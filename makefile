@@ -3,7 +3,7 @@ TARGET   = wfll
 
 GCC       = g++
 # compiling flags here
-CFLAGS   =  -Wall -fopenmp 
+CFLAGS   =  -Wall -fopenmp -O0
 
 LINKER   = g++ -fopenmp
 # linking flags here
@@ -32,5 +32,3 @@ $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.cpp
 .PHONY: clean
 clean:
 	@$(rm) $(OBJECTS)$(BINDIR)/$(TARGET): $(OBJECTS)
-	@$(LINKER) $(OBJECTS) $(LFLAGS) -o $@
-	@echo "Linking complete!"
