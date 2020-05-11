@@ -1,5 +1,3 @@
-# pragma once
-
 #include "marked_pointer.h"
 #include <stdint.h>
 

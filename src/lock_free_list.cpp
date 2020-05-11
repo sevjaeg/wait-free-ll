@@ -1,5 +1,3 @@
-# pragma once
-
 #include <atomic>
 #include <iostream>
 
@@ -19,8 +17,6 @@ struct Window {
     Node<T>* pred;
     Node<T>* curr;
 };
-
-
 
 template <class T>
 class LockFreeList {
@@ -49,7 +45,7 @@ class LockFreeList {
         return n->item == item && !(getFlag(n->next));
     }
 
-    Window<T> find (T item) {
+    Window<T> find (T item, int* cas_misses) {
         retry: while(true) {
             Node<T>* pred = head;
             Node<T>* curr = (Node<T>*)getPointer(pred->next);
@@ -67,6 +63,7 @@ class LockFreeList {
                     
                     if(!pred->next.compare_exchange_weak(curr, succ)) {
                         printf("find CAS failed\n");
+                        (*cas_misses)++;
                         goto retry;
                     }
                     curr = succ;
@@ -86,12 +83,12 @@ class LockFreeList {
         }
     }
 
-    bool add (T item) {
+    bool add (T item, int* cas_misses, int* cas_misses_find) {
         //printf("adding\n");
         Window<T> w;
         Node<T>* n = new Node<T>(item) ;
         while (true) {
-            w = find(item);
+            w = find(item, cas_misses_find);
             Node<T>* pred = w.pred;
             Node<T>* curr = w.curr;
 
@@ -110,16 +107,17 @@ class LockFreeList {
                 return true;
             }
             printf("add CAS failed\n");
+            (*cas_misses)++;
         }
     }
 
-    bool remove (T item) {
+    bool remove (T item, int* cas_misses, int* cas_misses_find) {
         if(item == INT32_MAX || item == INT32_MIN) {
             return false; //dont remove sentinels
         }
         Window<T> w;
         while(true){
-            w = find(item);
+            w = find(item, cas_misses_find);
             if(item != w.curr->item) {
                 return false; //item not in list
             }
@@ -131,6 +129,7 @@ class LockFreeList {
             
             if(!w.curr->next.compare_exchange_weak(succ, marked_succ)) {
                 printf("del CAS1 failed\n");
+                (*cas_misses)++;
                 continue;
             }
             //printf("del CAS1 success\n");
