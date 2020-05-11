@@ -45,14 +45,11 @@ class LockFreeList {
         return n->item == item && !(getFlag(n->next));
     }
 
-    Window<T> find (T item, int* cas_misses) {
+    Window<T> find (T item, volatile int* cas_misses) {
         retry: while(true) {
             Node<T>* pred = head;
             Node<T>* curr = (Node<T>*)getPointer(pred->next);
-            
-            //std::cout << pred->next <<"\n";
-            //std::cout << "pred:" << pred << " val:" << pred->item << "\n" <<"curr:" <<curr << " val:" << curr->item << "\n";
-
+           
             while(true) {
                 //link out marked item
                 Node<T>* succ = (Node<T>*)getPointer(curr->next);
@@ -63,7 +60,7 @@ class LockFreeList {
                     
                     if(!pred->next.compare_exchange_weak(curr, succ)) {
                         printf("find CAS failed\n");
-                        (*cas_misses)++;
+                        (*cas_misses) ++;
                         goto retry;
                     }
                     curr = succ;
@@ -74,7 +71,6 @@ class LockFreeList {
                     Window<T> w;
                     w.curr = curr;
                     w.pred = pred;
-                    //printf("returning hit: curr: %p pred: %p\n", curr, pred);
                     return w;
                 }
                 pred = curr;
@@ -83,19 +79,18 @@ class LockFreeList {
         }
     }
 
-    bool add (T item, int* cas_misses, int* cas_misses_find) {
-        //printf("adding\n");
+    int add (T item) {
         Window<T> w;
-        Node<T>* n = new Node<T>(item) ;
+        Node<T>* n = new Node<T>(item);
+        volatile int cas_misses = 0;
         while (true) {
-            w = find(item, cas_misses_find);
+            w = find(item, &cas_misses);
             Node<T>* pred = w.pred;
             Node<T>* curr = w.curr;
 
             if(curr-> item == item) {
-                //printf("duplicate\n");
                 delete(n);
-                return false;
+                return -1;
             }
 
             n->next = curr;
@@ -104,22 +99,23 @@ class LockFreeList {
             resetFlag((void **) &curr);
 
             if(pred->next.compare_exchange_weak(curr, n)) {
-                return true;
+                return cas_misses;
             }
             printf("add CAS failed\n");
-            (*cas_misses)++;
+            cas_misses++;
         }
     }
 
-    bool remove (T item, int* cas_misses, int* cas_misses_find) {
+    int remove (T item) {
+        volatile int cas_misses = 0;
         if(item == INT32_MAX || item == INT32_MIN) {
-            return false; //dont remove sentinels
+            return -1; //dont remove sentinels
         }
         Window<T> w;
         while(true){
-            w = find(item, cas_misses_find);
+            w = find(item, &cas_misses);
             if(item != w.curr->item) {
-                return false; //item not in list
+                return -1; //item not in list
             }
 
             Node<T>* succ = w.curr->next;
@@ -129,13 +125,13 @@ class LockFreeList {
             
             if(!w.curr->next.compare_exchange_weak(succ, marked_succ)) {
                 printf("del CAS1 failed\n");
-                (*cas_misses)++;
+                cas_misses++;
                 continue;
             }
             //printf("del CAS1 success\n");
 
             w.pred->next.compare_exchange_weak(w.curr, succ);
-            return true;
+            return cas_misses;
         }
     }
 

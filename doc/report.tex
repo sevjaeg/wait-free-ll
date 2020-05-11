@@ -1,0 +1,62 @@
+\documentclass[a4paper, 12t]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+
+\usepackage{lmodern}
+\usepackage{gensymb}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{nicefrac}
+
+\usepackage{verbatim}
+\usepackage{graphicx}
+\graphicspath{{./figures/}}
+
+\usepackage{geometry}
+\geometry{%
+	left   = 3cm,
+	right  = 3cm,
+	top    = 3cm,
+	bottom = 3cm
+}
+
+\usepackage[%
+	backend     = biber,
+	maxbibnames = 99,
+	autocite    = footnote,
+	style	    = ieee,
+	citestyle   = numeric-comp,
+	firstinits  = true,
+]{biblatex}
+\addbibresource{bibliography.bib}
+
+\usepackage[hang]{footmisc}
+\renewcommand{\hangfootparindent}{2em} 
+\renewcommand{\hangfootparskip}{2em}
+\renewcommand{\footnotemargin}{0.00001pt}
+\renewcommand{\footnotelayout}{\hspace{2em}}
+
+% last import!
+\usepackage{hyperref}
+
+\title{184.726 Advanced Multiprocessor Programming\\Project Report}
+\author{
+  Severin Jäger
+}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\pagebreak
+
+\section{Introduction}
+
+
+\sloppy
+\printbibliography
+
+\end{document}
