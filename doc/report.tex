@@ -9,6 +9,10 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{nicefrac}
+\usepackage{listings}
+% TODO nice?
+\usepackage{algorithm}
+\usepackage{algpseudocode}
 
 \usepackage{verbatim}
 \usepackage{graphicx}
@@ -16,8 +20,8 @@
 
 \usepackage{geometry}
 \geometry{%
-	left   = 3cm,
-	right  = 3cm,
+	left   = 2.5cm,
+	right  = 2.5cm,
 	top    = 3cm,
 	bottom = 3cm
 }
@@ -41,9 +45,24 @@
 % last import!
 \usepackage{hyperref}
 
-\title{184.726 Advanced Multiprocessor Programming\\Project Report}
+% TODO
+\lstset{
+    language=Java,
+    basicstyle=\ttfamily,
+    keywordstyle=\color{OliveGreen},
+    commentstyle=\color{Gray},
+    captionpos=b,
+    breaklines=true,
+    breakatwhitespace=false,
+    showspaces=false,
+    showtabs=false,
+    numbers=left,
+}
+
+\title{184.726 Advanced Multiprocessor Programming\\
+	   Project 10: Wait-Free Linked List}
 \author{
-  Severin Jäger
+  Severin Jäger, 01613004
 }
 \date{\today}
 
