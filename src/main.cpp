@@ -5,6 +5,7 @@
 #include "lock_free_list.cpp"
 #include "wait_free_list.cpp"
 #include "marked_pointer.h"
+#include "stamped_pointer.h"
 
 int main(int argc, char *argv[])
 {
@@ -13,25 +14,52 @@ int main(int argc, char *argv[])
 
     LockFreeList<int> *list = new LockFreeList<int>(INT32_MIN, INT32_MAX);
 
-    /*
-    Node<int> n;
-    n.item = 4;
-    n.next = nullptr;
+    /*cout << "\nstamped" << "\n";
+    Node<int> n(4);
+    Node<int>* nptr;
+    nptr = &n;
 
-    Node<int> * nptr;
-    nptr = & n;
-
+    std::cout << nptr << "\n";
     std::cout << getPointer(nptr) <<"\n";
     std::cout << getFlag(nptr)<<"\n";
 
     setFlag((void**)&nptr);
-
+    std::cout << nptr << "\n";
     std::cout << getPointer(nptr)<<"\n";
     std::cout << getFlag(nptr)<<"\n";
 
     resetFlag((void**)&nptr);
+    std::cout << nptr << "\n";
     std::cout << getFlag(nptr)<<"\n";
     */
+    
+    /*cout << "stamped" << "\n";
+    Node<int> n(4);
+    Node<int> *nptr;
+    nptr = &n;
+
+    std::cout << nptr << "\n";
+    std::cout << getUnstampedPointer(nptr) <<"\n";
+    std::cout << getStamp(nptr)<<"\n";
+
+    uint16_t ui = 124;
+    setStamp((void**)&nptr, ui);
+
+    std::cout << nptr << "\n";
+    std::cout << getUnstampedPointer(nptr)<<"\n";
+    std::cout << getStamp(nptr)<<"\n";
+
+    incrementStamp((void**)&nptr);
+    std::cout << nptr << "\n";
+    std::cout << getUnstampedPointer(nptr) <<"\n";
+    std::cout << getStamp(nptr)<<"\n";
+
+    resetStamp((void**)&nptr);
+    std::cout << nptr << "\n";
+    std::cout << getUnstampedPointer(nptr) <<"\n";
+    std::cout << getStamp(nptr)<<"\n";
+    */
+
 
     const int items = 5E4;
     omp_set_num_threads(8);

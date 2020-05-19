@@ -1,7 +1,7 @@
 #include <atomic>
 #include <iostream>
 
-#include "marked_pointer.h"
+#include "stamped_pointer.h"
 
 using namespace std;
 
