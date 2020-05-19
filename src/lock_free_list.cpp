@@ -6,16 +6,16 @@
 using namespace std;
 
 template <class T>
-struct Node {
+struct LockFreeNode {
     T item;
-    atomic<Node*> next;
-    Node(T val): item(val), next(nullptr){}
+    atomic<LockFreeNode*> next;
+    LockFreeNode(T val): item(val), next(nullptr){}
 };
 
 template <class T>
-struct Window {
-    Node<T>* pred;
-    Node<T>* curr;
+struct LockFreeWindow {
+    LockFreeNode<T>* pred;
+    LockFreeNode<T>* curr;
 };
 
 template <class T>
@@ -24,20 +24,20 @@ class LockFreeList {
     T first_sentinel_value;
     T last_sentinel_value;
     public:
-    atomic<Node<T>*> head;
+    atomic<LockFreeNode<T>*> head;
 
     LockFreeList(T first_sentinel_value, T last_sentinel_value) {
         this->first_sentinel_value = first_sentinel_value;
         this->last_sentinel_value = last_sentinel_value;
-        head = new Node<T>(first_sentinel_value);
-        Node<T>* tmp = head;
-        tmp->next = new Node<T>(last_sentinel_value);
+        head = new LockFreeNode<T>(first_sentinel_value);
+        LockFreeNode<T>* tmp = head;
+        tmp->next = new LockFreeNode<T>(last_sentinel_value);
     }
 
     bool contains(T item) {
-        Node<T>* n = head;
+        LockFreeNode<T>* n = head;
         while (n->item < item) {
-            n = (Node<T>*) getPointer((n->next));
+            n = (LockFreeNode<T>*) getPointer((n->next));
             if(n == nullptr) {
                 return false;
             }
@@ -45,14 +45,14 @@ class LockFreeList {
         return n->item == item && !(getFlag(n->next));
     }
 
-    Window<T> find (T item, volatile int* cas_misses) {
+    LockFreeWindow<T> find (T item, volatile int* cas_misses) {
         retry: while(true) {
-            Node<T>* pred = head;
-            Node<T>* curr = (Node<T>*)getPointer(pred->next);
+            LockFreeNode<T>* pred = head;
+            LockFreeNode<T>* curr = (LockFreeNode<T>*)getPointer(pred->next);
            
             while(true) {
                 //link out marked item
-                Node<T>* succ = (Node<T>*)getPointer(curr->next);
+                LockFreeNode<T>* succ = (LockFreeNode<T>*)getPointer(curr->next);
                 while(getFlag(curr->next)) {
                     //printf("next element\n");
                     resetFlag((void**)&curr);
@@ -64,29 +64,29 @@ class LockFreeList {
                         goto retry;
                     }
                     curr = succ;
-                    succ = (Node<T>*)getPointer(succ->next);
+                    succ = (LockFreeNode<T>*)getPointer(succ->next);
                 }
 
                 if((curr->item) >= item) {
-                    Window<T> w;
+                    LockFreeWindow<T> w;
                     w.curr = curr;
                     w.pred = pred;
                     return w;
                 }
                 pred = curr;
-                curr = (Node<T>*)getPointer(curr->next);
+                curr = (LockFreeNode<T>*)getPointer(curr->next);
             }
         }
     }
 
     int add (T item) {
-        Window<T> w;
-        Node<T>* n = new Node<T>(item);
+        LockFreeWindow<T> w;
+        LockFreeNode<T>* n = new LockFreeNode<T>(item);
         volatile int cas_misses = 0;
         while (true) {
             w = find(item, &cas_misses);
-            Node<T>* pred = w.pred;
-            Node<T>* curr = w.curr;
+            LockFreeNode<T>* pred = w.pred;
+            LockFreeNode<T>* curr = w.curr;
 
             if(curr-> item == item) {
                 delete(n);
@@ -111,15 +111,15 @@ class LockFreeList {
         if(item == INT32_MAX || item == INT32_MIN) {
             return -1; //dont remove sentinels
         }
-        Window<T> w;
+        LockFreeWindow<T> w;
         while(true){
             w = find(item, &cas_misses);
             if(item != w.curr->item) {
                 return -1; //item not in list
             }
 
-            Node<T>* succ = w.curr->next;
-            Node<T>* marked_succ = succ;
+            LockFreeNode<T>* succ = w.curr->next;
+            LockFreeNode<T>* marked_succ = succ;
             setFlag((void **)&marked_succ);
             resetFlag((void **)&succ);
             
@@ -136,7 +136,7 @@ class LockFreeList {
     }
 
     void print() {
-        Node<T>* ptr = head;
+        LockFreeNode<T>* ptr = head;
         printf("List:[");
         while (ptr != nullptr) {
             printf("%d,", (int) ptr->item);
