@@ -48,7 +48,7 @@ int main(int argc, char *argv[])
 
         if (tid == 0)
         {   
-             printf("\n_____________________\nAdding %d items using %d threads\n", items, nthreads);
+            printf("\n_____________________\nAdding %d items using %d threads\n", items, nthreads);
             start_time = omp_get_wtime();
         }
         #pragma omp barrier
@@ -58,9 +58,9 @@ int main(int argc, char *argv[])
         {   
             int misses =  list->add(i);
             misses_add += misses;
-            if(misses != 0) {
+            /*if(misses != 0) {
                 printf("miss @t%d,i=%d\n", tid, i);
-            }
+            }*/
         }
 
         #pragma omp barrier
