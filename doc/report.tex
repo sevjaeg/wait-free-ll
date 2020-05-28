@@ -73,18 +73,53 @@
 \pagebreak
 
 \section{Introduction}
-\cite{timnat12}
-\cite{harris01}
-\cite{herlihy12}
 
-\section{Wait-Free List Implementation}
+The scope of this project was the implementation of the basic version of the wait-free linked list presented in \cite{timnat12}. By exhaustive benchmarking, the advantages, but also the cost, of wait-free lists was examined. As a reference algorithm, the lock-free linked list from \cite{harris01} was implemented as discussed in the lecture.
 
-% helper scheme
+%\cite{herlihy12}
+
+\section{The Wait-Free List Data Strcuture}
+
+Lock-free data structures can relatively easily be constructed from the atomic CAS instruction, as the CAS only fails if some other thread has made progress. Achieving wait-freedom requires additional synchronisation between the threads. In list implementation here, this is done by excessive helping between the threads.
+
+%TODO rename opDesc in code
+Basically, the list maintains an array of all pending list operations. Whenever a thread initiates an contains, add or delete operation, it publishes an \verb|OperationDescriptor| to this array. The key to wait-freedom is that every thread executing some list operation in the following iterates over this array and helps previous operations. The order of the operations in determined by a \verb|phase|.
+
+The wait-free list offers the following operations. It is claimed in \cite{timnat12} that all these operations can be implemented in a wait-free and linearizable manner.
+\begin{itemize}
+\setlength\itemsep{0em}
+\item{\verb|contains|}
+\item{\verb|add|}
+\item{\verb|remove|}
+\end{itemize}
+
+All three operations internally use the \verb|search| method, which satisfies the same progress and correctness conditions.
+
+The authors admit that the the wait-free list performs significantly worse than the lock-free list presented by \cite{harris01}. However, they came up with some optimizations, which limit the extent of helping. Furthermore, the present a fast-past-slow-path algorithm combining the wait-free and the lock-free approach while maintaining wait-freedom. They claim that this algorithm almost reaches the performance of the lock-free data structure. 
+% performance claim in paper (mention SPFP)
+% worst-case bounds?
+
+\section{Implementation}
+
+% C++
+
+% Memory management not treated
+
+% counters (ABA) and flags: bit stealing
 
 % contains in reference not strictly wait-free, but left unaltered
 
 \section{Benchmarking}
 
+%machine
+%compiler version
+
+%TODO create readme to explain compiling and running
+
+% mix of operations
+% phases (fill, operation, empty)
+
+% measure list penalty (going back after CAS failure)
 
 \section{Summary and Outlook}
 
