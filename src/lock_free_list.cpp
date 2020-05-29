@@ -1,7 +1,7 @@
 #include <atomic>
 #include <iostream>
 
-#include "marked_pointer.h"
+#include "stamped_marked_pointer.h"
 
 using namespace std;
 
@@ -108,7 +108,7 @@ class LockFreeList {
 
     int remove (T item) {
         volatile int cas_misses = 0;
-        if(item == INT32_MAX || item == INT32_MIN) {
+        if(item == first_sentinel_value || item == last_sentinel_value) {
             return -1; //dont remove sentinels
         }
         LockFreeWindow<T> w;

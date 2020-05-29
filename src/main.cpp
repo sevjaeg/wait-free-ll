@@ -4,8 +4,7 @@
 
 #include "lock_free_list.cpp"
 #include "wait_free_list.cpp"
-#include "marked_pointer.h"
-#include "stamped_pointer.h"
+#include "stamped_marked_pointer.h"
 
 int main(int argc, char *argv[])
 {
@@ -14,9 +13,10 @@ int main(int argc, char *argv[])
 
     LockFreeList<int> *list = new LockFreeList<int>(INT32_MIN, INT32_MAX);
 
-    /*cout << "\nstamped" << "\n";
-    Node<int> n(4);
-    Node<int>* nptr;
+    /*
+    cout << "\nmarked" << "\n";
+    LockFreeNode<int> n(4);
+    LockFreeNode<int>* nptr;
     nptr = &n;
 
     std::cout << nptr << "\n";
@@ -31,35 +31,43 @@ int main(int argc, char *argv[])
     resetFlag((void**)&nptr);
     std::cout << nptr << "\n";
     std::cout << getFlag(nptr)<<"\n";
-    */
     
-    /*cout << "stamped" << "\n";
-    Node<int> n(4);
-    Node<int> *nptr;
-    nptr = &n;
+    
+    
+    cout << "\nstamped" << "\n";
+    WaitFreeNode<int> n2(4);
+    WaitFreeNode<int> *nptr2;
+    nptr2 = &n2;
 
-    std::cout << nptr << "\n";
-    std::cout << getUnstampedPointer(nptr) <<"\n";
-    std::cout << getStamp(nptr)<<"\n";
+    std::cout << nptr2 << "\n";
+    std::cout << getPointer(nptr2) <<"\n";
+    std::cout << getStamp(nptr2)<<"\n";
+    std::cout << getFlag(nptr2)<<"\n";
 
     uint16_t ui = 124;
-    setStamp((void**)&nptr, ui);
+    setStamp((void**)&nptr2, ui);
+    setFlag((void**)&nptr2);
+    
+    std::cout << nptr2 << "\n";
+    std::cout << getPointer(nptr2)<<"\n";
+    std::cout << getStamp(nptr2)<<"\n";
+    std::cout << getFlag(nptr2)<<"\n";;
 
-    std::cout << nptr << "\n";
-    std::cout << getUnstampedPointer(nptr)<<"\n";
-    std::cout << getStamp(nptr)<<"\n";
+    incrementStamp((void**)&nptr2);
+    
+    std::cout << nptr2 << "\n";
+    std::cout << getPointer(nptr2) <<"\n";
+    std::cout << getStamp(nptr2)<<"\n";
+    std::cout << getFlag(nptr2)<<"\n";
 
-    incrementStamp((void**)&nptr);
-    std::cout << nptr << "\n";
-    std::cout << getUnstampedPointer(nptr) <<"\n";
-    std::cout << getStamp(nptr)<<"\n";
-
-    resetStamp((void**)&nptr);
-    std::cout << nptr << "\n";
-    std::cout << getUnstampedPointer(nptr) <<"\n";
-    std::cout << getStamp(nptr)<<"\n";
+    resetStamp((void**)&nptr2);
+    resetFlag((void**)&nptr2);
+    std::cout << nptr2 << "\n";
+    std::cout << getPointer(nptr2) <<"\n";
+    std::cout << getStamp(nptr2)<<"\n";
+    std::cout << getFlag(nptr2)<<"\n";
     */
-
+    
 
     const int items = 5E4;
     omp_set_num_threads(8);
