@@ -11,8 +11,6 @@ int main(int argc, char *argv[])
     int nthreads, tid;
     double start_time, end_time, time;
 
-    LockFreeList<int> *list = new LockFreeList<int>(INT32_MIN, INT32_MAX);
-
     /*
     cout << "\nmarked" << "\n";
     LockFreeNode<int> n(4);
@@ -54,6 +52,7 @@ int main(int argc, char *argv[])
     std::cout << getFlag(nptr2)<<"\n";;
 
     incrementStamp((void**)&nptr2);
+    resetFlag((void**)&nptr2);
     
     std::cout << nptr2 << "\n";
     std::cout << getPointer(nptr2) <<"\n";
@@ -61,16 +60,19 @@ int main(int argc, char *argv[])
     std::cout << getFlag(nptr2)<<"\n";
 
     resetStamp((void**)&nptr2);
-    resetFlag((void**)&nptr2);
+    
     std::cout << nptr2 << "\n";
     std::cout << getPointer(nptr2) <<"\n";
     std::cout << getStamp(nptr2)<<"\n";
     std::cout << getFlag(nptr2)<<"\n";
-    */
     
+    */
 
-    const int items = 5E4;
-    omp_set_num_threads(8);
+    LockFreeList<int> *list = new LockFreeList<int>(INT32_MIN, INT32_MAX);
+    WaitFreeList<int> *wfList;
+
+    const int items = 1E3;
+    omp_set_num_threads(1);
 
     int cas_misses_add[nthreads + 32];
     int cas_misses_del[nthreads + 32];
@@ -84,6 +86,12 @@ int main(int argc, char *argv[])
 
         if (tid == 0)
         {   
+            wfList = new WaitFreeList<int>(INT32_MIN, INT32_MAX, nthreads);
+            wfList->print();
+            cout << wfList->add(tid,0) << "\n";
+            cout << wfList->add(tid,10) << "\n";
+            cout << wfList->remove(tid,0) << "\n";
+
             printf("\n_____________________\nAdding %d items using %d threads\n", items, nthreads);
             start_time = omp_get_wtime();
         }

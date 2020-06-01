@@ -15,6 +15,9 @@ void resetStamp(void ** p) {
     *p = (void *)(((uintptr_t) *p) & ~mask_stamp);
 }
 
+/**
+ * The stamp is only 15 bits long!
+ */ 
 void setStamp(void ** p, uint16_t v){
     resetStamp(p);
     *p = (void *)(((uintptr_t) *p) | (uintptr_t)v<<48);

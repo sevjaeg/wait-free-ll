@@ -3,7 +3,7 @@ TARGET   = wfll
 
 GCC       = g++
 # compiling flags here
-CFLAGS   =  -Wall -fopenmp -O3
+CFLAGS   =  -Wall -fopenmp -O0
 
 LINKER   = g++ -fopenmp
 # linking flags here
