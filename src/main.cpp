@@ -9,7 +9,7 @@
 int main(int argc, char *argv[])
 {
     int nthreads, tid;
-    double start_time, end_time, time;
+    double start_time, end_time, time, time_wf;
 
     /*
     cout << "\nmarked" << "\n";
@@ -72,7 +72,8 @@ int main(int argc, char *argv[])
     WaitFreeList<int> *wfList;
 
     const int items = 1E3;
-    omp_set_num_threads(1);
+    const int items_wf = 1E3;
+    omp_set_num_threads(8);
 
     int cas_misses_add[nthreads + 32];
     int cas_misses_del[nthreads + 32];
@@ -86,13 +87,7 @@ int main(int argc, char *argv[])
 
         if (tid == 0)
         {   
-            wfList = new WaitFreeList<int>(INT32_MIN, INT32_MAX, nthreads);
-            wfList->print();
-            cout << wfList->add(tid,0) << "\n";
-            cout << wfList->add(tid,10) << "\n";
-            cout << wfList->remove(tid,0) << "\n";
-
-            printf("\n_____________________\nAdding %d items using %d threads\n", items, nthreads);
+            printf("\n_____________________\nLock-Free: Adding %d items using %d threads\n", items, nthreads);
             start_time = omp_get_wtime();
         }
         #pragma omp barrier
@@ -117,7 +112,25 @@ int main(int argc, char *argv[])
         cas_misses_add[tid] = misses_add;
         cas_misses_del[tid] = misses_del;
 
-        
+        if (tid == 0) {
+            wfList = new WaitFreeList<int>(INT32_MIN, INT32_MAX, nthreads);
+            wfList->print();
+            printf("\n_____________________\nWait-Free: Adding %d items using %d threads\n", items_wf, nthreads);
+            start_time = omp_get_wtime();
+        }
+        #pragma omp barrier
+
+        for (i = (items_wf * tid) / nthreads; i < (items_wf * (tid + 1)) / nthreads; i++)
+        {   
+            wfList->add(tid, i);
+        }
+
+        #pragma omp barrier
+        if (tid == 0)
+        {
+            end_time = omp_get_wtime();
+            time_wf = end_time - start_time;
+        }
 
     } //end parallel
 
@@ -146,9 +159,12 @@ int main(int argc, char *argv[])
 
     printf("CAS Misses: ADD: %d, DEL: %d\n", 
            all_misses_add, all_misses_del);
-    printf("Duration: %.3lf seconds\n", time);
+    printf("Duration Lock-Free: %.3lf seconds\n", time);
+
+    printf("Duration Wait-Free: %.3lf seconds\n", time_wf);
 
     //list->print();
+    wfList->print();
 
     return 0;
 }
