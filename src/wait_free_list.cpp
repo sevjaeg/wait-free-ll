@@ -5,7 +5,7 @@
 
 #include "stamped_marked_pointer.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 using namespace std;
 
@@ -317,10 +317,15 @@ class WaitFreeList {
 
                     continue;
                 }
+                #if DEBUG
+                cout << "Flag set to " << getFlag(op->search_result->curr->next) <<"\n";
+
+                #endif
                 //removes node physically
                 search(tid, op->node->item, phase);
                 #if DEBUG
-                cout << "Node removed by search\n";
+                //cout << "Node removed by search\n";
+
                 #endif
 
                 OperationDescriptor<T> *determine = new OperationDescriptor<T>(op->phase, OperationType::DETERMINE_REMOVE, op->node, op->search_result);
@@ -335,9 +340,9 @@ class WaitFreeList {
         WaitFreeNode<T>* current_old = current;
         WaitFreeNode<T>* desired_full = desired;
         if(desiredFlag) {
-            setFlag((void **) desired_full);
+            setFlag((void **) &desired_full);
         }
-        setStamp((void **) desired_full, getStamp(current) + 1);
+        setStamp((void **) &desired_full, getStamp(current) + 1);
         return expected == (WaitFreeNode<T>*)getPointer(current_old) &&
             expectedFlag == getFlag(current_old) &&
             ((desired == (WaitFreeNode<T>*)getPointer(current_old) &&
@@ -349,9 +354,9 @@ class WaitFreeList {
         WaitFreeNode<T>* current_old = current;
         WaitFreeNode<T>* desired_full = desired;
         if(desiredFlag) {
-            setFlag((void **) desired_full);
+            setFlag((void **) &desired_full);
         }
-        setStamp((void **) desired_full, getStamp(current) + 1);
+        setStamp((void **) &desired_full, getStamp(current) + 1);
 
         return expected == (WaitFreeNode<T>*)getPointer(current_old) &&
             expectedFlag == getFlag(current_old) &&
@@ -364,11 +369,13 @@ class WaitFreeList {
     private : bool attemptFlag(atomic<WaitFreeNode<T>*> &current, WaitFreeNode<T>* expected, bool newFlag) {
         WaitFreeNode<T>* current_old = current;
         WaitFreeNode<T>* desired_full = expected;
-        if(newFlag) {
-            setFlag((void **) desired_full);
-        }
-        setStamp((void **) desired_full, getStamp(current) + 1);
 
+        if(newFlag) {
+            setFlag((void **) &desired_full);
+        }
+        
+        setStamp((void **) &desired_full, getStamp(current) + 1);
+        
         return expected == (WaitFreeNode<T>*)getPointer(current_old)
             && (newFlag == getFlag(current_old) ||
             current.compare_exchange_strong(current_old, desired_full));

@@ -6,7 +6,7 @@
 #include "wait_free_list.cpp"
 #include "stamped_marked_pointer.h"
 
-#define LOCK_FREE 0
+#define LOCK_FREE 1
 #define WAIT_FREE 1
 
 #define OPERATIONAL 0
@@ -15,9 +15,9 @@
 int main(int argc, char *argv[])
 {
     // Experiment parameters
-    const int items_lf = 1E4;
-    const int items_wf = 1E2;
-    omp_set_num_threads(1);
+    const int items_lf = 2E4;
+    const int items_wf = 2E4;
+    omp_set_num_threads(2);
 
     double start_time, end_time;
     int nthreads, tid;    
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
         for (int i = (items_lf * tid) / nthreads; i < (items_lf * (tid + 1)) / nthreads; i++)
         {   
             int misses =  lfList->remove(i);
-            misses_add += misses;
+            misses_del += misses;
         }
         #pragma omp barrier
         if (tid == 0)
@@ -115,7 +115,6 @@ int main(int argc, char *argv[])
         all_misses_add += cas_misses_add[i];
         all_misses_del += cas_misses_del[i];
     }
-
     
     printf("\nDuration Lock-Free: \nFill: %.3lf seconds\nOperation: %.3lf seconds\nCleanup: %.3lf seconds\n",
         time_fill_lf, time_op_lf, time_clean_lf);
@@ -149,7 +148,7 @@ int main(int argc, char *argv[])
         {
             end_time = omp_get_wtime();
             time_fill_wf = end_time - start_time;
-            
+            //wfList->print();
         }
 
         #if OPERATIONAL
