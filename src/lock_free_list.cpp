@@ -58,9 +58,10 @@ class LockFreeList {
                     resetFlag((void**)&curr);
                     resetFlag((void**)&succ);;
                     
+                    // remove physically
                     if(!pred->next.compare_exchange_weak(curr, succ)) {
-                        printf("find CAS failed\n");
-                        (*cas_misses) ++;
+                        //printf("find CAS failed\n");
+                        (*cas_misses)++;
                         goto retry;
                     }
                     curr = succ;
@@ -79,18 +80,18 @@ class LockFreeList {
         }
     }
 
-    int add (T item) {
+    bool add (T item, volatile int* cas_misses, volatile int* cas_misses_find) {
         LockFreeWindow<T> w;
         LockFreeNode<T>* n = new LockFreeNode<T>(item);
-        volatile int cas_misses = 0;
         while (true) {
-            w = find(item, &cas_misses);
+            w = find(item, cas_misses_find);
             LockFreeNode<T>* pred = w.pred;
             LockFreeNode<T>* curr = w.curr;
 
             if(curr-> item == item) {
+                // not found
                 delete(n);
-                return -1;
+                return false;
             }
 
             n->next = curr;
@@ -99,23 +100,22 @@ class LockFreeList {
             resetFlag((void **) &curr);
 
             if(pred->next.compare_exchange_weak(curr, n)) {
-                return cas_misses;
+                return true;
             }
-            printf("add CAS failed\n");
-            cas_misses++;
+            //printf("add CAS failed\n");
+            (*cas_misses)++;
         }
     }
 
-    int remove (T item) {
-        volatile int cas_misses = 0;
+    bool remove (T item, volatile int* cas_misses, volatile int* cas_misses_find) {
         if(item == first_sentinel_value || item == last_sentinel_value) {
             return -1; //dont remove sentinels
         }
         LockFreeWindow<T> w;
         while(true){
-            w = find(item, &cas_misses);
+            w = find(item, cas_misses_find);
             if(item != w.curr->item) {
-                return -1; //item not in list
+                return false; //item not in list
             }
 
             LockFreeNode<T>* succ = w.curr->next;
@@ -124,14 +124,13 @@ class LockFreeList {
             resetFlag((void **)&succ);
             
             if(!w.curr->next.compare_exchange_weak(succ, marked_succ)) {
-                printf("del CAS1 failed\n");
-                cas_misses++;
+                //printf("del CAS1 failed\n");
+                (*cas_misses)++;
                 continue;
             }
-            //printf("del CAS1 success\n");
 
             w.pred->next.compare_exchange_weak(w.curr, succ);
-            return cas_misses;
+            return true;
         }
     }
 

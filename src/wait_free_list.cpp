@@ -34,8 +34,8 @@ struct WaitFreeWindow {
 
 template <class T>
 struct OperationDescriptor {
-    long phase;
-    OperationType type;
+    volatile long phase;
+    volatile OperationType type;
     WaitFreeNode<T>* node;
     WaitFreeWindow<T>* search_result;
     OperationDescriptor(long ph, OperationType t, WaitFreeNode<T>* n, WaitFreeWindow<T>* res): 
@@ -47,7 +47,7 @@ class WaitFreeList {
     private:
     WaitFreeNode<T> * head, * tail;
     std::vector<unique_ptr<atomic<OperationDescriptor<T>*>>> state;
-    int state_size;
+    volatile int state_size;
     atomic<long> current_max_phase;
 
     T first_sentinel_value;
@@ -80,7 +80,6 @@ class WaitFreeList {
      * Not the strictly wait-free implementation from the paper, but the basic
      * version from the reference implementation
      */
-
     public: bool contains(T item) {
         WaitFreeNode<T>* n = head;
         while (n->item < item) {
@@ -92,7 +91,6 @@ class WaitFreeList {
         return n->item == item && !(getFlag(n->next));
     }
 
-    // checked
     public: bool add(int tid, T value) {
         #if DEBUG
         cout << "addding " << value << "\n";
@@ -104,10 +102,8 @@ class WaitFreeList {
         *state.at(tid) = op;
         help(phase);
         return (**state.at(tid)).type == OperationType::SUCCESS;
-
     }
 
-    //checked
     public : bool remove(int tid, T value) {
         #if DEBUG
         cout << "removing " << value << "\n";
@@ -147,7 +143,10 @@ class WaitFreeList {
                     if(!isSearchStillPending(tid, phase)) {
                         return nullptr;
                     }
-                    if (!snip) goto retry;
+                    if (!snip) {
+                        //(*cas_misses)++;
+                        goto retry;
+                    }
                     #if DEBUG
                     cout << "Search removed node physically\n";
                     #endif
@@ -169,11 +168,9 @@ class WaitFreeList {
         }
     }
 
-    //checked
     private: void help(long phase) {
         for(int i = 0; i < state_size; i++) {
             OperationDescriptor<T>* desc = *state.at(i);
-            //cout << "state[" << i << "]: type:" << desc->type << " phase:" <<desc->phase<<"\n";
             if(desc->phase <= phase) { // help all pending operations
                 if(desc->type == OperationType::ADD) {
                     #if DEBUG
@@ -254,8 +251,8 @@ class WaitFreeList {
                     continue;
                 }
                 
+                //TODO count
                 compareAndSet(node->next, next_node, (WaitFreeNode<T>*)getPointer(window->curr), false, false);
-
                 if(compareAndSetVersion(version, window->pred->next, (WaitFreeNode<T>*)getPointer(node->next), (WaitFreeNode<T>*)getPointer(node), false, false)) {
                     OperationDescriptor<T> *success = new OperationDescriptor<T>(phase, OperationType::SUCCESS, node, nullptr);
                     if((*state[tid]).compare_exchange_strong(newOp, success)) {
@@ -332,7 +329,6 @@ class WaitFreeList {
                 (*state[tid]).compare_exchange_strong(op, determine);
                 return;
             }
-            
         }
     }
 
@@ -399,8 +395,9 @@ class WaitFreeList {
         WaitFreeNode<T>* ptr = head;
         printf("List:[");
         while (ptr != nullptr) {
-            printf("%d,", (int) ptr->item);
-            ptr = ptr->next;
+            int val = ptr->item;
+            printf("%d,", val);
+            ptr = (WaitFreeNode<T> *)getPointer(ptr->next);
         }
         printf("]\n");
     }
