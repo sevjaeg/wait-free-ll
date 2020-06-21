@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <iostream>
 #include <random>
+#include <unistd.h>
 
 #include "lock_free_list.cpp"
 #include "wait_free_list.cpp"
@@ -13,12 +14,48 @@
 #define OPERATIONAL 1
 #define CLEANUP 1
 
+#define CSV 1
+
+/**
+ * -p number of threads
+ * -n number of elements in the set after initial filling
+ * -i number of operations in operation phase
+ */ 
 int main(int argc, char *argv[])
-{
+{   
+    long items = 0, iterations_operational = 0;
+    int p = 0;
+    int pset = 0, nset = 0, iset = 0, tok = 0;
+
+    while ((tok = getopt(argc, argv, "p:n:i:")) != -1) {
+        switch (tok) {
+            case 'n':
+                items = atol(optarg);
+                nset = 1;
+                break;
+            case 'i':
+                iterations_operational = atol(optarg);
+                iset = 1;
+                break;
+            case 'p':
+                p = atoi(optarg);
+                pset = 1;
+                break;
+            default:
+                fprintf(stderr, "unknown parameter\n");
+                exit(1);
+        }
+    }
+
+    if(nset + iset + pset < 3) {
+        fprintf(stderr, "Invalid parameters\n");
+        exit(-1);
+    }
+
     // Experiment parameters
-    const int items = 1E4;
-    const int iterations_operational = 1E5;
-    omp_set_num_threads(8);
+    //const int items = 1E4;
+    //const int iterations_operational = 1E5;
+    omp_set_num_threads(p);
 
     default_random_engine generator;
     uniform_int_distribution<int> dist_op(0,1);
@@ -44,7 +81,11 @@ int main(int argc, char *argv[])
         int misses_del = 0;
         if (tid == 0)
         {   
-            printf("\n_____________________\nLock-Free: %d items, %d threads\n", items, nthreads);
+            #if !(CSV)
+            printf("\n_____________________\nLock-Free: %ld items, %d threads\n", items, nthreads);
+            #else
+            printf("%d, %ld, ,", nthreads, items);
+            #endif
             start_time = omp_get_wtime();
         }
         #pragma omp barrier
@@ -66,7 +107,9 @@ int main(int argc, char *argv[])
 
         #if OPERATIONAL
         if(tid == 0) {
-            printf("Operational Benchmark\n");
+            #if !(CSV)
+            printf("Operational Benchmark with %ld iterations\n", iterations_operational);
+            #endif
             start_time = omp_get_wtime();    
         }
         #pragma omp barrier
@@ -100,7 +143,9 @@ int main(int argc, char *argv[])
 
         #if CLEANUP
         if(tid == 0) {
+            #if !(CSV)
             printf("Removing all elements\n");
+            #endif
             start_time = omp_get_wtime();
         }
         #pragma omp barrier
@@ -136,10 +181,11 @@ int main(int argc, char *argv[])
         all_misses_find += cas_misses_find[i];
     }
     
-    printf("\nDuration Lock-Free: \nFill: %.3lf seconds\nOperation: %.3lf seconds\nCleanup: %.3lf seconds\n",
+    #if !(CSV)
+    printf("\nDuration Lock-Free: \nFill: %.5lf seconds\nOperation: %.5lf seconds\nCleanup: %.5lf seconds\n",
         time_fill_lf, time_op_lf, time_clean_lf);
     printf("CAS Misses: ADD: %d, FIND: %d, DEL: %d\n", 
-           all_misses_add, all_misses_del, all_misses_find);
+           all_misses_add, all_misses_find, all_misses_del);
     printf("ADD: ");
     for(int i = 0; i < nthreads; i++) {
         printf("%d ", cas_misses_add[i]);
@@ -156,6 +202,9 @@ int main(int argc, char *argv[])
     }
     printf("\n");
     //lfList->print();
+    #else
+    printf("%lf, %lf, %lf, ", time_fill_lf, time_op_lf, time_clean_lf);
+    #endif
 
 #endif //lock-free benchmark
 
@@ -169,7 +218,9 @@ int main(int argc, char *argv[])
         tid = omp_get_thread_num();
         if (tid == 0) {
             wfList = new WaitFreeList<int>(INT32_MIN, INT32_MAX, nthreads);
-            printf("\n_____________________\nWait-Free: %d items, %d threads\n", items, nthreads);
+            #if !(CSV)
+            printf("\n_____________________\nWait-Free: %ld items, %d threads\n", items, nthreads);
+            #endif
             start_time = omp_get_wtime();
         }
         #pragma omp barrier
@@ -188,7 +239,9 @@ int main(int argc, char *argv[])
 
         #if OPERATIONAL
         if(tid == 0) {
-            printf("Operational Benchmark\n");
+            #if !(CSV)
+            printf("Operational Benchmark with %ld iterations\n", iterations_operational);
+            #endif
             start_time = omp_get_wtime();    
         }
         #pragma omp barrier
@@ -212,7 +265,9 @@ int main(int argc, char *argv[])
 
         #if CLEANUP
         if(tid == 0) {
+            #if !(CSV)
             printf("Removing all elements\n");
+            #endif
             start_time = omp_get_wtime();
         }
         #pragma omp barrier
@@ -231,10 +286,13 @@ int main(int argc, char *argv[])
         }
         #endif //cleanup
     } // end parallel  
-
-    printf("\nDuration Wait-Free: \nFill: %.3lf seconds\nOperation: %.3lf seconds\nCleanup: %.3lf seconds\n",
+    #if !(CSV)
+    printf("\nDuration Wait-Free: \nFill: %.5lf seconds\nOperation: %.5lf seconds\nCleanup: %.5lf seconds\n",
         time_fill_wf, time_op_wf, time_clean_wf);
     //wfList->print();
+    #else
+    printf("%lf, %lf, %lf, \n", time_fill_wf, time_op_wf, time_clean_wf);
+    #endif
 
 #endif //wait-free benchmark
 

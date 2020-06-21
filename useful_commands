@@ -1,0 +1,4 @@
+sudo openconnect --user e1613004@tuwien.ac.at vpn.tuwien.ac.at
+scp -r ~/uni/AMP/wait-free-ll nebula:/home/student/uamp20s31
+scp nebula:/home/student/uamp20s31/wait-free-ll/wfll.out ~/uni/AMP/wait-free-ll/out/wfll.out
+sbatch run.job
