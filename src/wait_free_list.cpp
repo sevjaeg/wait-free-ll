@@ -76,6 +76,11 @@ class WaitFreeList {
         }
     }
 
+    //TODO free free list
+    private : ~ WaitFreeList() {
+
+    }
+
     /**
      * Not the strictly wait-free implementation from the paper, but the basic
      * version from the reference implementation
