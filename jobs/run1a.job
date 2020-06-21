@@ -5,7 +5,7 @@
 #SBATCH -c 32
 #SBATCH --cpu-freq=High
 #SBATCH --time=5:00
-#SBATCH --output=wfll.out
+#SBATCH --output=wfll_1a.out
 
 NLIST=(100 200 500 1000)
 PLIST=(1 2 4 8 16 24 32)
