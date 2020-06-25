@@ -1,4 +1,4 @@
-\documentclass[a4paper, 12t]{article}
+\documentclass[a4paper, 12pt]{article}
 
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
@@ -10,9 +10,6 @@
 \usepackage{amssymb}
 \usepackage{nicefrac}
 \usepackage{listings}
-% TODO nice?
-\usepackage{algorithm}
-\usepackage{algpseudocode}
 
 \usepackage{verbatim}
 \usepackage{graphicx}
@@ -45,19 +42,7 @@
 % last import!
 \usepackage{hyperref}
 
-% TODO
-\lstset{
-    language=Java,
-    basicstyle=\ttfamily,
-    keywordstyle=\color{OliveGreen},
-    commentstyle=\color{Gray},
-    captionpos=b,
-    breaklines=true,
-    breakatwhitespace=false,
-    showspaces=false,
-    showtabs=false,
-    numbers=left,
-}
+\hyphenation{im-ple-men-ta-tions}
 
 \title{184.726 Advanced Multiprocessor Programming\\
 	   Project 10: Wait-Free Linked List}
@@ -74,18 +59,17 @@
 
 \section{Introduction}
 
-The scope of this project was the implementation of the basic version of the wait-free linked list presented in \cite{timnat12}. By exhaustive benchmarking, the advantages, but also the cost, of wait-free lists was examined. As a reference algorithm, the lock-free linked list from \cite{harris01} was implemented as discussed in the lecture.
-
-%\cite{herlihy12}
+The scope of this project was the implementation of the basic version of the wait-free linked list presented in \cite{timnat12}. By exhaustive benchmarking, the advantages, but also the cost, of wait-free lists were examined. As a reference algorithm, the lock-free linked list from \cite{harris01} was implemented as discussed in the lecture.
 
 \section{The Wait-Free List Data Strcuture}
 
-Lock-free data structures can relatively easily be constructed from the atomic CAS instruction, as the CAS only fails if some other thread has made progress. Achieving wait-freedom requires additional synchronisation between the threads. In list implementation here, this is done by excessive helping between the threads.
+% restructure (basic description & detailled functionallity (pseudo-code?))
 
-%TODO rename opDesc in code
-Basically, the list maintains an array of all pending list operations. Whenever a thread initiates an contains, add or delete operation, it publishes an \verb|OperationDescriptor| to this array. The key to wait-freedom is that every thread executing some list operation in the following iterates over this array and helps previous operations. The order of the operations in determined by a \verb|phase|.
+Lock-free data structures can relatively easily be constructed from the atomic compare-and-set (CAS) instruction, as the CAS only fails if some other thread has made progress. Achieving wait-freedom requires additional synchronisation between the threads. In the list implementation discussed here, this is done by excessive helping between the threads.
 
-The wait-free list offers the following operations. It is claimed in \cite{timnat12} that all these operations can be implemented in a wait-free and linearizable manner.
+Basically, the list maintains an array of all pending list operations. Whenever a thread initiates an contains, add or delete operation, it publishes an \verb|OperationDescriptor| to this array. The key to wait-freedom is that every thread executing some list operation in the following iterates over this array and helps previous operations. The order of the operations in determined by a \verb|phase|. So it is ensured that all preceeding operations returned before the new operation is conducted. Therefore, maximum response times (or at least maximum numbers of instructions) can be guaraneed. This might be useful for real-time applications, however, it comes with a significant overhead which is discussed in the following.
+
+The wait-free list offers the following operations:
 \begin{itemize}
 \setlength\itemsep{0em}
 \item{\verb|contains|}
@@ -93,26 +77,41 @@ The wait-free list offers the following operations. It is claimed in \cite{timna
 \item{\verb|remove|}
 \end{itemize}
 
-All three operations internally use the \verb|search| method, which satisfies the same progress and correctness conditions.
+It is claimed in \cite{timnat12} that all these operations can be implemented in a wait-free and linearizable manner. All three operations internally use the \verb|search| method, which satisfies the same progress and correctness guarantees.
 
-The authors admit that the the wait-free list performs significantly worse than the lock-free list presented by \cite{harris01}. However, they came up with some optimizations, which limit the extent of helping. Furthermore, the present a fast-past-slow-path algorithm combining the wait-free and the lock-free approach while maintaining wait-freedom. They claim that this algorithm almost reaches the performance of the lock-free data structure. 
-% performance claim in paper (mention SPFP)
+The authors admit that the the wait-free list performs significantly worse\footnote{By a factor of $1.3$ to $1.6$} than the lock-free list presented by \cite{harris01}. However, they came up with some optimizations, which limit the extent of helping. Furthermore, the present a fast-past-slow-path (FPSP) algorithm combining the wait-free and the lock-free approach while maintaining wait-freedom. They claim that this algorithm almost reaches the performance of the lock-free data structure. 
+
 % worst-case bounds?
 
-\section{Implementation}
+\section{Implementation Details}
 
-% C++
+The wait-free data structure and the lock-free reference were implemented as C++ classes. The implementation of the lock-free list closely followed the lecture slides. For the lock-free list, the Java implementation from \cite{timnat12} was ported to C++. The most important differences are described in the following.
 
-% Memory management not treated
+% TODO simple freelist
+One significant advantage of Java for the implementation of concurrent data structures is the presence of the garbage collector, who takes care of freeing memory. However, garbage collection does not provide strict progress guarantees such as lock- or even wait-freedom. In this project memory management was not treated, so the memory leaks. This is unacceptable for practical application, however meaningful benchmarking is still possible with proper experiment design.
 
-% counters (ABA) and flags: bit stealing
+Furthermore, the a \verb|VersionedAtomicMarkableReference| is introduced in the Java implementation, which is used to mark nodes as deleted logically and to avoid the ABA problem by the use of pointer versions. In this project the MSB of a pointer is used as flag for logical deletion and the following 15 bits provide a version of the pointer. This is possible because the pointers on the benchmarking system only utilize the lowest 48 bits of the 64 bit pointers.
 
-% contains in reference not strictly wait-free, but left unaltered
+The Java implementation also provides a \verb|contains| method which is integrated into the helper mechanism. However, \cite{herlihy12} proposes a very simple contains method and claims that is wait-free. The authors of \cite{timnat12} mention that wait-freedom can not be guaraneed under presence of unbounded \verb|add| operations. Nontheless, this project focusses on making previously not wait-free operations (\verb|add| and \verb|remove|) wait-free, therefore both implementations use the simple \verb|contains| method from \cite{herlihy12}.
 
-\section{Benchmarking}
+\section{Benchmarking Results}
+
+The benchmarks conducted serve two purposes: Firstly, the performance of the wait-free list was evaluated and compared to the lock-free reference in order to reproduce the results of \cite{timnat12}. Additionally, the drawbacks of the wait-free data structure are studied closer, focussing on the CAS misses. 
+
+% ??? Finally, an attempt to compare the latencies of the wait-free and lock-free list was undertaken.
 
 %machine
 %compiler version
+
+% BM1 : focus on operation phase (low fill, high iterations)
+
+% BM2: only fill/empty
+
+% CAS failure counting scheme: count the same operations (no CAS of state array for wf)
+% add: link in
+% del: logical removal
+% find: physical removal
+
 
 %TODO create readme to explain compiling and running
 
@@ -120,6 +119,11 @@ The authors admit that the the wait-free list performs significantly worse than 
 % phases (fill, operation, empty)
 
 % measure list penalty (going back after CAS failure)
+
+% comparision with paper autors
+% they use 1024 elements (favourable?)
+% 60% contains, equally add and remove
+% tgey already claim that the basic version doesnt scale well (threads working simulateously on one operation)
 
 \section{Summary and Outlook}
 

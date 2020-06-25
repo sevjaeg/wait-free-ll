@@ -76,6 +76,11 @@ class WaitFreeList {
         }
     }
 
+    //TODO free free list
+    private : ~ WaitFreeList() {
+
+    }
+
     /**
      * Not the strictly wait-free implementation from the paper, but the basic
      * version from the reference implementation
@@ -91,7 +96,7 @@ class WaitFreeList {
         return n->item == item && !(getFlag(n->next));
     }
 
-    public: bool add(int tid, T value) {
+    public: bool add(int tid, T value, volatile int* cas_misses, volatile int* cas_misses_find) {
         #if DEBUG
         cout << "addding " << value << "\n";
         #endif
@@ -100,11 +105,11 @@ class WaitFreeList {
         WaitFreeNode<T>* newNode = new WaitFreeNode<T>(value);
         OperationDescriptor<T>* op = new OperationDescriptor<T>(phase, OperationType::ADD, newNode, nullptr);
         *state.at(tid) = op;
-        help(phase);
+        help(phase, cas_misses, cas_misses_find);
         return (**state.at(tid)).type == OperationType::SUCCESS;
     }
 
-    public : bool remove(int tid, T value) {
+    public : bool remove(int tid, T value, volatile int* cas_misses, volatile int* cas_misses_find) {
         #if DEBUG
         cout << "removing " << value << "\n";
         #endif
@@ -116,7 +121,7 @@ class WaitFreeList {
         WaitFreeNode<T>* newNode = new WaitFreeNode<T>(value);
         OperationDescriptor<T>* op = new OperationDescriptor<T>(phase, OperationType::SEARCH_REMOVE, newNode, nullptr);
         *state.at(tid) = op;
-        help(phase);
+        help(phase, cas_misses, cas_misses_find);
         op = *state.at(tid);
         if(op->type == OperationType::DETERMINE_REMOVE) {
             bool a = false; // workaround
@@ -125,7 +130,7 @@ class WaitFreeList {
         return false;
     }
 
-    public : WaitFreeWindow<T>* search(int tid, T value, long phase) {
+    public : WaitFreeWindow<T>* search(int tid, T value, long phase, volatile int * cas_misses) {
         WaitFreeNode<T> *pred = nullptr, *curr = nullptr, *succ = nullptr;
         bool marked = false;
         bool snip;
@@ -137,14 +142,18 @@ class WaitFreeList {
                 succ = (WaitFreeNode<T>*)getPointer(curr->next);
                 marked = getFlag(curr->next);
                 while(marked) {
-                    //node logically deleted, remove it
+                    //node logically deleted, remove it physically
                     snip = compareAndSet(pred->next, curr, succ, false, false);
 
                     if(!isSearchStillPending(tid, phase)) {
                         return nullptr;
                     }
                     if (!snip) {
-                        //(*cas_misses)++;
+                        #if DEBUG
+                        printf("find CAS failed\n");
+                        #endif
+                        
+                        (*cas_misses)++;
                         goto retry;
                     }
                     #if DEBUG
@@ -168,7 +177,7 @@ class WaitFreeList {
         }
     }
 
-    private: void help(long phase) {
+    private: void help(long phase, volatile int* cas_misses, volatile int* cas_misses_find) {
         for(int i = 0; i < state_size; i++) {
             OperationDescriptor<T>* desc = *state.at(i);
             if(desc->phase <= phase) { // help all pending operations
@@ -177,19 +186,19 @@ class WaitFreeList {
                     cout << "helping add\n";
                     #endif
 
-                    helpAdd(i, desc->phase);
+                    helpAdd(i, desc->phase, cas_misses, cas_misses_find);
                 } else if(desc->type == OperationType::SEARCH_REMOVE || desc->type == OperationType::EXECUTE_REMOVE) {
                     #if DEBUG
                     cout << "helping remove\n";
                     #endif
 
-                    helpRemove(i, desc->phase);
+                    helpRemove(i, desc->phase, cas_misses, cas_misses_find);
                 }
             }
         }
     }
 
-    private: void helpAdd(int tid, long phase) {
+    private: void helpAdd(int tid, long phase, volatile int* cas_misses, volatile int* cas_misses_find) {
         while(true) {
             OperationDescriptor<T>* op = *state.at(tid);
             if(!(op->type == OperationType::ADD && op->phase == phase)) {
@@ -201,7 +210,7 @@ class WaitFreeList {
             }
             WaitFreeNode<T>* node = op->node;
             WaitFreeNode<T>* next_node = (WaitFreeNode<T>*)getPointer(node->next);
-            WaitFreeWindow<T>* window = search(tid, node->item, phase);
+            WaitFreeWindow<T>* window = search(tid, node->item, phase, cas_misses_find);
             if(window == nullptr) {
                 #if DEBUG
                 cout << "window == nullptr\n";
@@ -251,19 +260,24 @@ class WaitFreeList {
                     continue;
                 }
                 
-                //TODO count
                 compareAndSet(node->next, next_node, (WaitFreeNode<T>*)getPointer(window->curr), false, false);
                 if(compareAndSetVersion(version, window->pred->next, (WaitFreeNode<T>*)getPointer(node->next), (WaitFreeNode<T>*)getPointer(node), false, false)) {
                     OperationDescriptor<T> *success = new OperationDescriptor<T>(phase, OperationType::SUCCESS, node, nullptr);
                     if((*state[tid]).compare_exchange_strong(newOp, success)) {
                         return;
-                    }
+                    } 
+                } else {
+                    #if DEBUG
+                    printf("add CAS failed\n");
+                    #endif
+
+                    (*cas_misses)++;
                 }
             }
         }
     }
 
-    private: void helpRemove(int tid, long phase) {
+    private: void helpRemove(int tid, long phase, volatile int* cas_misses, volatile int* cas_misses_find) {
         while(true) {
             OperationDescriptor<T> *op = *state.at(tid);
             if(!((op->type == OperationType::SEARCH_REMOVE || op->type == OperationType::EXECUTE_REMOVE)
@@ -276,7 +290,7 @@ class WaitFreeList {
             }
             WaitFreeNode<T> *node = op->node;
             if(op->type == OperationType::SEARCH_REMOVE) {
-                WaitFreeWindow<T> *window = search(tid, node->item, phase);
+                WaitFreeWindow<T> *window = search(tid, node->item, phase, cas_misses_find);
                 if(window == nullptr) {
                     #if DEBUG
                     cout << "window == nullptr\n";
@@ -310,8 +324,9 @@ class WaitFreeList {
                 if(!attemptFlag(op->search_result->curr->next, next, true)) {
                      #if DEBUG
                     cout << "Unable to mark, try again\n";
+                    printf("del logical CAS failed\n");
                     #endif
-
+                    (*cas_misses)++;
                     continue;
                 }
                 #if DEBUG
@@ -319,7 +334,7 @@ class WaitFreeList {
 
                 #endif
                 //removes node physically
-                search(tid, op->node->item, phase);
+                search(tid, op->node->item, phase, cas_misses_find);
                 #if DEBUG
                 //cout << "Node removed by search\n";
 

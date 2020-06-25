@@ -1,0 +1,24 @@
+#! /bin/bash
+
+#SBATCH -p q_student
+#SBATCH -N 1                 
+#SBATCH -c 32
+#SBATCH --cpu-freq=High
+#SBATCH --time=5:00
+#SBATCH --output=bm2b.out
+
+NLIST=(10000 20000 50000)
+PLIST=(32)
+NREP=30
+BINARY="bin/wfll"
+
+for n in "${NLIST[@]}"
+do
+  for p in "${PLIST[@]}"
+  do
+    for nrep in `seq 0 ${NREP}`
+    do
+      ${BINARY} -p $p -n $n -i 0
+    done    
+  done  
+done

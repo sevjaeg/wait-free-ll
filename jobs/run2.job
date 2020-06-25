@@ -1,0 +1,26 @@
+#! /bin/bash
+
+#SBATCH -p q_student
+#SBATCH -N 1                 
+#SBATCH -c 32
+#SBATCH --cpu-freq=High
+#SBATCH --time=5:00
+#SBATCH --output=wfll_2.out
+
+# benchmark for fill and empty phase
+
+NLIST=(20000 50000)
+PLIST=(32)
+NREP=30
+BINARY="bin/wfll"
+
+for n in "${NLIST[@]}"
+do
+  for p in "${PLIST[@]}"
+  do
+    for nrep in `seq 1 ${NREP}`
+    do
+      ${BINARY} -p $p -n $n -i $n
+    done    
+  done  
+done
