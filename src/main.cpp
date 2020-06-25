@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
             #if !(CSV)
             printf("\n_____________________\nLock-Free: %ld items, %d threads\n", items, nthreads);
             #else
-            printf("%d, %ld, ,", nthreads, items);
+            printf("%d; %ld; %ld; ; ", nthreads, items, iterations_operational);
             #endif
             start_time = omp_get_wtime();
         }
@@ -170,22 +170,22 @@ int main(int argc, char *argv[])
         cas_misses_find[tid] = misses_find;
     } //end parallel
 
-    int all_misses_add = 0;
-    int all_misses_del = 0;
-    int all_misses_find = 0;
+    int all_misses_add_lf = 0;
+    int all_misses_del_lf = 0;
+    int all_misses_find_lf = 0;
 
     for (int i = 0; i < nthreads; i++)
     {
-        all_misses_add += cas_misses_add[i];
-        all_misses_del += cas_misses_del[i];
-        all_misses_find += cas_misses_find[i];
+        all_misses_add_lf += cas_misses_add[i];
+        all_misses_del_lf += cas_misses_del[i];
+        all_misses_find_lf += cas_misses_find[i];
     }
     
     #if !(CSV)
     printf("\nDuration Lock-Free: \nFill: %.5lf seconds\nOperation: %.5lf seconds\nCleanup: %.5lf seconds\n",
         time_fill_lf, time_op_lf, time_clean_lf);
     printf("CAS Misses: ADD: %d, FIND: %d, DEL: %d\n", 
-           all_misses_add, all_misses_find, all_misses_del);
+           all_misses_add_lf, all_misses_find_lf, all_misses_del_lf);
     printf("ADD: ");
     for(int i = 0; i < nthreads; i++) {
         printf("%d ", cas_misses_add[i]);
@@ -203,19 +203,27 @@ int main(int argc, char *argv[])
     printf("\n");
     //lfList->print();
     #else
-    printf("%lf, %lf, %lf, ", time_fill_lf, time_op_lf, time_clean_lf);
+    printf("%lf; %lf; %lf; %d; %d; %d;", time_fill_lf, time_op_lf, time_clean_lf, all_misses_add_lf, all_misses_del_lf, all_misses_find_lf);
     #endif
 
 #endif //lock-free benchmark
 
 #if WAIT_FREE
     WaitFreeList<int> *wfList;
+    int cas_misses_add_wf[nthreads + 32];
+    int cas_misses_del_wf[nthreads + 32];
+    int cas_misses_find_wf[nthreads + 32];
     double time_fill_wf, time_op_wf = 0, time_clean_wf = 0;
 
     #pragma omp parallel private(tid)
     {   
         nthreads = omp_get_num_threads();
         tid = omp_get_thread_num();
+
+        int misses_add = 0;
+        int misses_find = 0;
+        int misses_del = 0;
+
         if (tid == 0) {
             wfList = new WaitFreeList<int>(INT32_MIN, INT32_MAX, nthreads);
             #if !(CSV)
@@ -227,7 +235,10 @@ int main(int argc, char *argv[])
 
         for (int i = (items * tid) / (nthreads); i < (items * (tid + 1)) / (nthreads); i++)
         {   
-            wfList->add(tid, i);
+            volatile int misses_a = 0, misses_f = 0;
+            wfList->add(tid, i, &misses_a, &misses_f);
+            misses_add += misses_a;
+            misses_find += misses_f;
         }
         #pragma omp barrier
         if (tid == 0)
@@ -250,9 +261,15 @@ int main(int argc, char *argv[])
             int item = dist_item(generator);
             
             if(operation) {
-                wfList->remove(tid, item);
+                volatile int misses_d = 0, misses_f = 0;
+                wfList->remove(tid, item, &misses_d, &misses_f);
+                misses_del += misses_d;
+                misses_find += misses_f;
             } else {
-                wfList->add(tid, item);
+                volatile int misses_a = 0, misses_f = 0;
+                wfList->add(tid, item, &misses_a, &misses_f);
+                misses_add += misses_a;
+                misses_find += misses_f;
             }
         }
         #pragma omp barrier
@@ -260,6 +277,7 @@ int main(int argc, char *argv[])
         {
             end_time = omp_get_wtime();
             time_op_wf = end_time - start_time;
+            //wfList->print();
         }
         #endif //operational
 
@@ -273,9 +291,11 @@ int main(int argc, char *argv[])
         #pragma omp barrier
         for (int i = (2 *items * tid) / (nthreads); i < (2 * items * (tid + 1)) / (nthreads); i++)
         {   
-            //TODO does not work!
             if(wfList->contains(i)) {
-                wfList->remove(tid, i);
+                volatile int misses_d = 0, misses_f = 0;
+                wfList->remove(tid, i, &misses_d, &misses_f);
+                misses_del += misses_d;
+                misses_find += misses_f;
             }
         }
         #pragma omp barrier
@@ -283,15 +303,49 @@ int main(int argc, char *argv[])
         {
             end_time = omp_get_wtime();
             time_clean_wf = end_time - start_time;
+            //wfList->print();
         }
         #endif //cleanup
+
+        cas_misses_add_wf[tid] = misses_add;
+        cas_misses_del_wf[tid] = misses_del;
+        cas_misses_find_wf[tid] = misses_find;
     } // end parallel  
+
+    int all_misses_add_wf = 0;
+    int all_misses_del_wf = 0;
+    int all_misses_find_wf = 0;
+
+    for (int i = 0; i < nthreads; i++)
+    {
+        all_misses_add_wf += cas_misses_add_wf[i];
+        all_misses_del_wf += cas_misses_del_wf[i];
+        all_misses_find_wf += cas_misses_find_wf[i];
+    }
+
     #if !(CSV)
     printf("\nDuration Wait-Free: \nFill: %.5lf seconds\nOperation: %.5lf seconds\nCleanup: %.5lf seconds\n",
         time_fill_wf, time_op_wf, time_clean_wf);
+    printf("CAS Misses: ADD: %d, FIND: %d, DEL: %d\n", 
+           all_misses_add_wf, all_misses_find_wf, all_misses_del_wf);
+    printf("ADD: ");
+    for(int i = 0; i < nthreads; i++) {
+        printf("%d ", cas_misses_add_wf[i]);
+    }
+    printf("\n");
+    printf("FIND: ");
+    for(int i = 0; i < nthreads; i++) {
+        printf("%d ", cas_misses_find_wf[i]);
+    }
+    printf("\n");
+    printf("DEL: ");
+    for(int i = 0; i < nthreads; i++) {
+        printf("%d ", cas_misses_del_wf[i]);
+    }
+    printf("\n");
     //wfList->print();
     #else
-    printf("%lf, %lf, %lf, \n", time_fill_wf, time_op_wf, time_clean_wf);
+    printf("%lf; %lf; %lf; %d; %d; %d\n", time_fill_wf, time_op_wf, time_clean_wf, all_misses_add_wf, all_misses_del_wf, all_misses_find_wf);
     #endif
 
 #endif //wait-free benchmark

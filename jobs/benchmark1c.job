@@ -5,20 +5,20 @@
 #SBATCH -c 32
 #SBATCH --cpu-freq=High
 #SBATCH --time=5:00
-#SBATCH --output=wfll_1a.out
+#SBATCH --output=bm1b.out
 
-NLIST=(100 200 500 1000)
-PLIST=(1 2 4 8 16 24 32)
+ILIST=(1000000)
+PLIST=(6 8 10 12 14 16 18 20 22 24 26 28 30 32)
 NREP=30
 BINARY="bin/wfll"
 
-for n in "${NLIST[@]}"
+for i in "${ILIST[@]}"
 do
   for p in "${PLIST[@]}"
   do
-    for nrep in `seq 1 ${NREP}`
+    for nrep in `seq 0 ${NREP}`
     do
-      ${BINARY} -p $p -n $n -i $n
+      ${BINARY} -p $p -n 500 -i $i
     done    
   done  
 done

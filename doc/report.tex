@@ -96,8 +96,22 @@ The Java implementation also provides a \verb|contains| method which is integrat
 
 \section{Benchmarking Results}
 
+The benchmarks conducted serve two purposes: Firstly, the performance of the wait-free list was evaluated and compared to the lock-free reference in order to reproduce the results of \cite{timnat12}. Additionally, the drawbacks of the wait-free data structure are studied closer, focussing on the CAS misses. 
+
+% ??? Finally, an attempt to compare the latencies of the wait-free and lock-free list was undertaken.
+
 %machine
 %compiler version
+
+% BM1 : focus on operation phase (low fill, high iterations)
+
+% BM2: only fill/empty
+
+% CAS failure counting scheme: count the same operations (no CAS of state array for wf)
+% add: link in
+% del: logical removal
+% find: physical removal
+
 
 %TODO create readme to explain compiling and running
 
