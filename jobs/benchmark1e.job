@@ -5,10 +5,10 @@
 #SBATCH -c 32
 #SBATCH --cpu-freq=High
 #SBATCH --time=5:00
-#SBATCH --output=bm1c.out
+#SBATCH --output=bm1e.out
 
 ILIST=(1000000)
-PLIST=(6 8 10 12 14 16 18 20 22 24 26 28 30 32)
+PLIST=(22 24 26 28 30 32)
 NREP=30
 BINARY="bin/wfll"
 
