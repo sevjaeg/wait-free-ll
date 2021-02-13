@@ -48,3 +48,5 @@ obj/
 *.gz
 *.fls
 *.pdf
+
+!report.pdf

@@ -76,7 +76,7 @@ class WaitFreeList {
         }
     }
 
-    //TODO free free list
+    //TODO free list
     private : ~ WaitFreeList() {
 
     }
