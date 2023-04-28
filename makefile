@@ -19,6 +19,12 @@ INCLUDES := $(wildcard $(SRCDIR)/*.h)
 OBJECTS  := $(SOURCES:$(SRCDIR)/%.cpp=$(OBJDIR)/%.o)
 rm       = rm -f
 
+all: dirs $(BINDIR)/$(TARGET)
+	@echo "Target ${TARGET} built sucessfully!"
+	
+dirs:
+	mkdir -p $(OBJDIR) $(BINDIR)
+
 $(BINDIR)/$(TARGET): $(OBJECTS)
 	@$(LINKER) $(OBJECTS) $(LFLAGS) -o $@
 	@echo "Linking complete!"
@@ -29,6 +35,7 @@ $(OBJECTS): $(OBJDIR)/%.o : $(SRCDIR)/%.cpp
 	@echo "Compiled "$<" successfully!"
 
 
-.PHONY: clean
 clean:
 	@$(rm) $(OBJECTS)$(BINDIR)/$(TARGET): $(OBJECTS)
+
+.PHONY: clean dirs all
